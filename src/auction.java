@@ -17,6 +17,7 @@ public class auction {
 		System.out.println("Objective Function: " + objFunction);
 		return objFunction;
 	}
+	
 	private static void generateConsts(LpSolve solver, int sellers[][], int buyers[][]) throws LpSolveException{
 		//number of variables (number of sellers * number of buyers)
 		int numberOfVariables = sellers.length * buyers.length;
@@ -77,9 +78,54 @@ public class auction {
 		return (sellers.length * buyers.length);
 	}
 	
+	public static int[][] cloneArray(int[][] src) {
+	    int length = src.length;
+	    int[][] target = new int[length][src[0].length];
+	    for (int i=0; i<length; i++) {
+	        System.arraycopy(src[i], 0, target[i], 0, src[i].length);
+	    }
+	    return target;
+	}
+	
+	public static int[] arrayToInt(double[] source) {
+		int[] target = new int[source.length];
+		for(int i=0; i<source.length;i++) {
+			target[i] = (int) source[i];
+		}
+		return target;
+	}
+	
+	public static void recalculate(int[] allocation, int[][] sellers, int[][] buyers) {
+		int[][] tempSellers = cloneArray(sellers);
+		int[][] tempBuyers = cloneArray(buyers);
+		
+		for(int i=0; i<tempBuyers.length; i++) {
+			int startIndex = i * tempSellers.length;
+			int[] alloc = Arrays.copyOfRange(allocation, startIndex, (startIndex+tempSellers.length));
+			if(tempBuyers[i][0] == Arrays.stream(alloc).sum()) {
+				tempBuyers[i][0] = 0;
+				tempBuyers[i][1] = 0;
+			}
+		}
+		
+		System.out.println("New buyers after 1st calculation: " + Arrays.deepToString(tempBuyers));
+		
+		for(int i=0; i<tempSellers.length; i++) {
+			int[] alloc = new int[tempBuyers.length];
+			for(int j=0; j<tempBuyers.length; j++) {
+				int sellerIndex = i + j * tempSellers.length;
+				alloc[j] = allocation[sellerIndex];
+			}
+			System.out.println("seller[" + i + "] = " + Arrays.toString(alloc));
+			tempSellers[i][0] -= Arrays.stream(alloc).sum();
+		}
+		System.out.println("New seller after 1st calculation: " + Arrays.deepToString(tempSellers));
+		
+	}
+	
 	public static void main(String[] args) throws LpSolveException {
 		int[][] sellers = new int[][]{	{10, 8}, {6,6}, {8,7}, {12,6}, {7, 5}};
-		int[][] buyers = new int[][] {{10,10,100}, {8,7,56}, {5,10,45}, {15,6,90}};	
+		int[][] buyers = new int[][] {{10,10}, {8,7}, {5,9}, {15,6}};	
 		
 		LpSolve solver = LpSolve.makeLp(0, getNumberOfVariables(sellers, buyers));
 		solver.strSetObjFn(generateObjFuction(sellers, buyers));
@@ -88,11 +134,17 @@ public class auction {
 		solver.setMaxim();
 		solver.solve();
 		
-		System.out.println("Value of objective function: " + solver.getObjective());
-	      double[] var = solver.getPtrVariables();
-	      for (int i = 0; i < var.length; i++) {
-	        System.out.println("Value of var[" + i + "] = " + (int) var[i]);
-	      }
+		System.out.println("Value of welfare: " + solver.getObjective());
+	    int[] allocation = arrayToInt(solver.getPtrVariables());
+	    int buyeri = 1;
+	    for (int i = 0; i < allocation.length; i++) {
+	    	if(i % sellers.length == 0) {
+	    		System.out.println("--------- Buyer " + buyeri + " ---------");
+	    		buyeri++;
+	    	}
+	        System.out.println("Seller [" + (i%sellers.length+1) + "] = " + allocation[i]);
+	    }
+	    recalculate(allocation, sellers, buyers);
 		
 	}
 }
