@@ -13,6 +13,7 @@ public class bruteForce {
 	private static String finalAlloc = "";
 	
 	public bruteForce(int[][] sellers, int[][] buyers) throws LpSolveException {
+		alloc.clear();
 		this.sellers = sellers;
 		this.buyers = buyers;
 		CalculateWelfare();
@@ -21,6 +22,7 @@ public class bruteForce {
 	static void CalculateWelfare() throws LpSolveException { 	
 		double max = 0;
 	    int n = set.length;
+//	    System.out.println("in brute: buyers.length: " + buyers.length);
 	    genPossibleOutCome(set, "", n, buyers.length); 
 	    for(int i=0; i<alloc.size(); i++) {
 	    	LpSolve solver = LpSolve.makeLp(0, ProcessData.getNumberOfVariables(sellers, buyers));
@@ -36,6 +38,7 @@ public class bruteForce {
 			}				
 //			System.out.println("Opt: " + max + " ; Alloc: " + finalAlloc);
 	    }
+	    
 	} 
 	
 	public static String getAlloc() {

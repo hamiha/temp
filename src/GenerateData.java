@@ -97,11 +97,11 @@ public class GenerateData {
 			}
 		}
 		
-		System.out.println("buyers: ");
-		print2DArrays(buyers);
-
-		System.out.println("\nsellers: ");
-		print2DArrays(sellers);
+//		System.out.println("buyers: ");
+//		print2DArrays(buyers);
+//
+//		System.out.println("\nsellers: ");
+//		print2DArrays(sellers);
 		
 		System.out.println();
 	}

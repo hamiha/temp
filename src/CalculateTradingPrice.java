@@ -149,8 +149,9 @@ public class CalculateTradingPrice {
 		for(int i=0; i<sellers.length; i++) {
 			sellersTradingPrice[i] = getSellerDiscount(i);
 		}
-		System.out.println("Buyers: " + Arrays.toString(buyersTradingPrice));
-		System.out.println("Sellers: " + Arrays.toString(sellersTradingPrice));
+//		Print sellers and buyers discount
+//		System.out.println("Buyers: " + Arrays.toString(buyersTradingPrice));
+//		System.out.println("Sellers: " + Arrays.toString(sellersTradingPrice));
 	}
 	
 //	get total discount for seller from distribution
