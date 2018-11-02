@@ -5,7 +5,10 @@ import lpsolve.LpSolveException;
 
 public class Acution {
 	
-	public static double[][] runSimulate(int[][] sellers, int[][] buyers, boolean isGen) throws LpSolveException {
+	private static double optWelfare = 0;
+	private static int[] alloc;
+	
+	public static double[][] runSimulate(int[][] sellers, int[][] buyers, boolean isGen, boolean isBuyerBase) throws LpSolveException {
 //    	create linear object with its objective function
 		LpSolve solver = LpSolve.makeLp(0, ProcessData.getNumberOfVariables(sellers, buyers));
 		solver.strSetObjFn(ProcessData.generateObjFuction(sellers, buyers));
@@ -21,9 +24,9 @@ public class Acution {
 		}
 		else {
 //		run brute force algorithm to get optimal allocation
-			bruteForce brute = new bruteForce(sellers, buyers);
+			BruteForce brute = new BruteForce(sellers, buyers);
 //		generate constraints from brute force algorithm and solve
-			ProcessData.generateConsts(solver, sellers, buyers, bruteForce.getAlloc());			
+			ProcessData.generateConsts(solver, sellers, buyers, brute.getAlloc());			
 		}
 
 		solver.setMaxim();
@@ -42,76 +45,120 @@ public class Acution {
 //	    		System.out.println("Seller [" + (i%sellers.length+1) + "] = " + allocation[i]);
 //	    }
 	    
-	    int optimalWelfare = (int) solver.getObjective();
+	    double optimalWelfare = solver.getObjective();
 	    CalculateTradingPrice calculation = new CalculateTradingPrice(sellers, buyers, ProcessData.arrayToInt(solver.getPtrVariables()), optimalWelfare, isGen);
 	    
+	    optWelfare = optimalWelfare;
+	    alloc = ProcessData.arrayToInt(solver.getPtrVariables());
+	    
+	    if(isBuyerBase)
+	    	calculation.BuyerBase();
+	    else
+	    	calculation.SellerBase();
+	    
 	    double stopTime = System.nanoTime();
-	    double timeElapsed = (stopTime - startTime) / 100000000;
-	    timeElapsed = roundAvoid(timeElapsed, 3);
+	    double timeElapsed = (stopTime - startTime) / 1000000000;
+	    timeElapsed = roundDouble(timeElapsed, 3);
 	    
 	    double[][] result = new double[1][2];
-	    result[0][0] = solver.getObjective();
+	    result[0][0] = roundDouble(solver.getObjective(), 3);
 	    result[0][1] = timeElapsed;
 	    
 	    return result;
 	}
 	
-	public static double roundAvoid(double value, int places) {
+	public static double roundDouble(double value, int places) {
 	    double scale = Math.pow(10, places);
 	    return Math.round(value * scale) / scale;
 	}
 
+	public static void runToGetTimeAndWelfare(int numberOfSimulation, int maxNumberOfBuyers, int diffNumberOfBuyerAndSellers, int buyerStartFrom) throws LpSolveException {
+		
+		if(numberOfSimulation <= 0) {
+			System.out.println("Number of simulation must be greater than 0");
+			return;
+		}
+		if(buyerStartFrom > maxNumberOfBuyers) {
+			System.out.println("Max number of buyers must be greater or equal to start of buyer's index");
+			return;
+		}
+		if(buyerStartFrom <= diffNumberOfBuyerAndSellers) {
+			System.out.println("Start buyer's index must be greater than different number of buyers and sellers");
+			return;
+		}
+		
+		
+		double numSim = (double) numberOfSimulation;
+		double meanGeneTimer = 0.0;
+		double meanBruteTimmer = 0.0;
+		double meanGeneWelfare = 0.0;
+		double meanBruteWelfare = 0.0;
+		
+		int plotIndex = 0;
+		int lengthOfPlot = maxNumberOfBuyers-buyerStartFrom+1;
+		double[] GenTimer = new double[lengthOfPlot];
+		double[] BruteTimer = new double[lengthOfPlot];
+		double[] GeneWelfare = new double[lengthOfPlot];
+		double[] BruteWelfare = new double[lengthOfPlot];
+		
+		for(int i=buyerStartFrom;i<=maxNumberOfBuyers; i++) {
+			GenerateData data = new GenerateData(i-diffNumberOfBuyerAndSellers,i);
+			int[][] sellers = ProcessData.cloneArray(data.sellers);
+			int[][] buyers = ProcessData.cloneArray(data.buyers);
+			int simIndex = 0;
+			while(simIndex < numberOfSimulation) {
+				System.out.println("Length: " + buyers.length);
+				
+				System.out.println("Genetic:");
+				double[][] genetic = runSimulate(sellers, buyers, true, true);
+				meanGeneWelfare += genetic[0][0];
+				meanGeneTimer += genetic[0][1]; 
+				
+				System.out.println("Brute force:");
+				double[][] brute = runSimulate(sellers, buyers, false, true);
+				meanBruteWelfare += brute[0][0];
+				meanBruteTimmer += brute[0][1];
+				
+				simIndex++;
+			}
+			
+			GenTimer[plotIndex] = roundDouble(meanGeneTimer/numSim, 3);
+			BruteTimer[plotIndex] = roundDouble(meanBruteTimmer/numSim, 3);
+			GeneWelfare[plotIndex] = roundDouble(meanGeneWelfare/numSim, 3);
+			BruteWelfare[plotIndex] = roundDouble(meanBruteWelfare/numSim, 3);
+			
+			System.out.println("Mean welfare genetic: " + GeneWelfare[plotIndex]);
+			System.out.println("Mean welfare brute: " + BruteWelfare[plotIndex]);
+			System.out.println("Mean time gene: " + GenTimer[plotIndex]);
+			System.out.println("Mean time brute: " + BruteTimer[plotIndex]);
+		
+			plotIndex++;
+			
+		}
+		System.out.println("-----SUMMARY------");
+		System.out.println("Mean welfare genetic: " + Arrays.toString(GeneWelfare));
+		System.out.println("Mean welfare brute: " + Arrays.toString(BruteWelfare));
+		System.out.println("Mean time gene: " + Arrays.toString(GenTimer));
+		System.out.println("Mean time brute: " + Arrays.toString(BruteTimer));
+	}
+	
 	
 	public static void main (String[] args) throws LpSolveException {
 //		input format: {units,  unit price}
 //		auto generate data (number of sellers, number of buyers)
-
-		double numberOfSimulation = 20.0;
-		double trueTimes = 0.0;
-		double meanGeneTimer = 0.0;
-		double meanBruteTimmer = 0.0;
 		
-		int maxNumberOfSellers = 8;
-		int diffNumberOfBuyerAndNumberOfSeller = 2;
+		GenerateData data = new GenerateData(6, 8);
+		System.out.println("-----BUYER BASE------");
+		runSimulate(data.sellers, data.buyers, true, true);
 		
-		int plotIndex = 0;
-		double[] GenTimer = new double[maxNumberOfSellers+2];
-		double[] BruteTimer = new double[maxNumberOfSellers+2];
-		double[] Accurary = new double[maxNumberOfSellers+2];
+		System.out.println("-----SELLER BASE------");
+		CalculateTradingPrice sellerCal = new CalculateTradingPrice(data.sellers, data.buyers, alloc, optWelfare, true);
+		sellerCal.SellerBase();
 		
-		for(int index=2;index<=maxNumberOfSellers; index++) {
-			GenerateData data = new GenerateData(index,index+2);
-			int[][] sellers = ProcessData.cloneArray(data.sellers);
-			int[][] buyers = ProcessData.cloneArray(data.buyers);
-			int i=0;
-			trueTimes = 0.0;
-			while(i<(int)numberOfSimulation) {
-				System.out.println("Genetic:");
-				double[][] genetic = runSimulate(sellers, buyers, true);
-				meanGeneTimer += genetic[0][1]; 
-				System.out.println("Length: " + buyers.length);
-				System.out.println("Brute force:");
-				double[][] brute = runSimulate(sellers, buyers, false);
-				meanBruteTimmer += brute[0][1];
-				if(genetic[0][0] - brute[0][0] < 0.0001)
-					trueTimes+= 1.0;
-				i++;
-			}
-			GenTimer[plotIndex] = meanGeneTimer/numberOfSimulation;
-			BruteTimer[plotIndex] = meanBruteTimmer/numberOfSimulation;
-			Accurary[plotIndex] = trueTimes/numberOfSimulation;
-			
-			plotIndex++;
-			
-			System.out.println("Mean time gen: " + meanGeneTimer/numberOfSimulation);
-			System.out.println("Mean time brute: " + meanBruteTimmer/numberOfSimulation);
-			System.out.println("Accuracy: " + trueTimes/numberOfSimulation);
-		}
-		
-		System.out.println("Gene: " + Arrays.toString(GenTimer));
-		System.out.println("Gene: " + Arrays.toString(BruteTimer));
-		System.out.println("Gene: " + Arrays.toString(Accurary));
-		
+//		run simulation and get mean welfare and mean running time of genetic and brute force
+//		runToGetTimeAndWelfare(numberOfSimulation, maxNumberOfBuyers, diffNumberOfBuyerAndSellers, buyerStartFrom);
+//		runToGetTimeAndWelfare(3, 8, 2, 6);
+				
 	}
 }
 

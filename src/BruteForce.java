@@ -4,7 +4,7 @@ import java.util.Arrays;
 import lpsolve.LpSolve;
 import lpsolve.LpSolveException;
 
-public class bruteForce {
+public class BruteForce {
 	
 	static ArrayList<String> alloc = new ArrayList<String>();
 	private static int[][] sellers;
@@ -12,7 +12,7 @@ public class bruteForce {
 	private static char[] set = {'0', '1'};
 	private static String finalAlloc = "";
 	
-	public bruteForce(int[][] sellers, int[][] buyers) throws LpSolveException {
+	public BruteForce(int[][] sellers, int[][] buyers) throws LpSolveException {
 		alloc.clear();
 		this.sellers = sellers;
 		this.buyers = buyers;
