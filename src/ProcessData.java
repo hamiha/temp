@@ -94,6 +94,15 @@ public class ProcessData{
 	    return target;
 	}
 	
+	public static double[][] cloneArray(double[][] source) {
+	    int length = source.length;
+	    double[][] target = new double[length][source[0].length];
+	    for (int i=0; i<length; i++) {
+	        System.arraycopy(source[i], 0, target[i], 0, source[i].length);
+	    }
+	    return target;
+	}
+	
 	public static int[] arrayToInt(double[] source) {
 		int[] target = new int[source.length];
 		for(int i=0; i<source.length;i++) {

@@ -13,10 +13,15 @@ public class CalculateTradingPrice {
 	private	static double[] buyersTradingPrice;
 	private	static double[] sellersTradingPrice;
 	private static double[][] distribution;
+	private static double[][] tradingPriceTable;
+	private static double totalOfTradingPrice;
 	private static double optimalWelfare;
 	private static double welfareOfOthers;
 	private static double welfareWithoutBuyeri;
 	private static double welfareWithoutSelleri;
+	
+	private static double[][] buyerBase;
+	private static double[][] sellerBase;
 	
 	public CalculateTradingPrice(int[][] sellers, int[][] buyers, int[] allocation, double optimalWelfare, boolean isGene) throws LpSolveException {
 		this.sellers = ProcessData.cloneArray(sellers);
@@ -24,11 +29,16 @@ public class CalculateTradingPrice {
 		this.alloction = Arrays.copyOf(allocation, allocation.length);
 		this.optimalWelfare = optimalWelfare;
 		this.isGene = isGene;
+		this.tradingPriceTable = new double[buyers.length][sellers.length];
+		this.totalOfTradingPrice = 0;
 		setNewAlloc(sellers, buyers);
+		
 	}
 	
 	public static void BuyerBase() throws LpSolveException {
-//		printTwoDimsArray(newUnitAlloc);
+		System.out.println("---------Allocation------------");
+		printTwoDimsArray(newUnitAlloc);
+		System.out.println("-------------------------------");
 		calculateTradingPrice();
 //		printTwoDimsArray(newWelfareAlloc);
 		getTradingPrice();
@@ -65,7 +75,7 @@ public class CalculateTradingPrice {
 		newSellers[selleri][0] = 0;
 		newSellers[selleri][1] = 0;
 		welfareWithoutSelleri = 0;
-		
+		int numbOfRunning = 0;
 		while(welfareWithoutSelleri < welfareOfOthers || welfareWithoutSelleri > optimalWelfare) {
 //			System.out.println("Welfare w/o " + welfareWithoutSelleri +" is smaller than " + welfareOfOthers);
 //		run genetic algorithm to get optimal allocation
@@ -83,7 +93,19 @@ public class CalculateTradingPrice {
 			solver.solve();
 			
 			welfareWithoutSelleri = roundDouble(solver.getObjective(), 3);
-			System.out.println("Welfare without seller i: " + welfareWithoutSelleri);
+//			System.out.println("Welfare without seller i: " + welfareWithoutSelleri);
+			
+//			after calculating 3 times, break the loop
+			numbOfRunning++;
+			if(numbOfRunning>3) {
+				if(welfareWithoutSelleri > optimalWelfare)
+//					System.out.println("seller i > optimal");
+					welfareWithoutSelleri = optimalWelfare;
+				if(welfareWithoutSelleri < welfareOfOthers) {
+					welfareWithoutSelleri = welfareOfOthers;
+//					System.out.println("seller i < others");
+				}
+			}
 		}
 	}
 	
@@ -94,7 +116,7 @@ public class CalculateTradingPrice {
 			welfareOfSelleri += newWelfareAlloc[i][sellerIndex];
 		}
 		welfareOfOthers = roundDouble((optimalWelfare - welfareOfSelleri), 3) ;
-		System.out.println("welfare of seller i: " + welfareOfSelleri);
+//		System.out.println("welfare of seller i: " + welfareOfSelleri);
 	}
 	
 //	calculate trading price
@@ -106,7 +128,7 @@ public class CalculateTradingPrice {
 			double totalContribution =  getTotalOfColumn(i, newWelfareAlloc);
 			if(totalContribution > 0) {
 //				calculate seller's distribution: welfare w/o i - others
-				System.out.println("seller i: " + i);
+//				System.out.println("seller i: " + i);
 				getWelfareOfOthers(i);
 				calculateWelfareWithoutSelleri(i);
 				double discount = welfareWithoutSelleri - welfareOfOthers;
@@ -124,15 +146,27 @@ public class CalculateTradingPrice {
 
 //	get trading price of buyers and sellers
 	public static void showTradingPrice() {
+		
+		for(int row=0; row<buyers.length; row++) {
+			for(int col=0; col<sellers.length; col++) {
+				double tradingPrice = buyers[row][1] * newUnitAlloc[row][col] - distribution[row][col];
+				tradingPriceTable[row][col] = tradingPrice;
+				totalOfTradingPrice += tradingPrice;
+			}
+		}
+		printTwoDimsArray(tradingPriceTable);
+		sellerBase = ProcessData.cloneArray(tradingPriceTable);
+		System.out.println("Total of trading price: " + totalOfTradingPrice);
+		
 		buyersTradingPrice = new double[buyers.length];
 		sellersTradingPrice = new double[sellers.length];
-//		buyer's trading price is the last element of the row related to buyer id
+//		seller's trading price is the last element of the column related to seller's id
 		for(int i=0; i<sellers.length; i++) {
 			sellersTradingPrice[i] = roundDouble(distribution[buyers.length][i], 3);
 		}
-//		seller's trading price is the total of elements in column related to seller id
+//		buyer's trading price is the total of elements in column related to buyer's id
 		for(int i=0; i<buyers.length; i++) {
-			buyersTradingPrice[i] = Arrays.stream(newWelfareAlloc[i]).sum();
+			buyersTradingPrice[i] = Arrays.stream(distribution[i]).sum();
 			buyersTradingPrice[i] =  roundDouble(buyersTradingPrice[i], 3);
 		}
 //		Print sellers and buyers discount
@@ -159,6 +193,7 @@ public class CalculateTradingPrice {
 		newBuyers[buyeri][0] = 0;
 		newBuyers[buyeri][1] = 0;
 		welfareWithoutBuyeri = 0;
+		int numbOfRunning = 0;
 		
 		int numberOfVars = ProcessData.getNumberOfVariables(sellers, newBuyers);
 		String ObjectFunction = ProcessData.generateObjFuction(sellers, newBuyers);
@@ -189,7 +224,19 @@ public class CalculateTradingPrice {
 			solver.solve();
 			
 			welfareWithoutBuyeri = roundDouble(solver.getObjective(), 3);
-			System.out.println("Welfare without i: " + welfareWithoutBuyeri);
+//			System.out.println("Welfare without i: " + welfareWithoutBuyeri);
+			
+//			after calculating 3 times, break the loop			
+			numbOfRunning++;
+			if(numbOfRunning>3) {
+				if(welfareWithoutBuyeri > optimalWelfare)
+//					System.out.println("buyer i > optimal");
+					welfareWithoutBuyeri = optimalWelfare;
+				if(welfareWithoutSelleri < welfareOfOthers) {
+//					System.out.println("buyer i < others");
+					welfareWithoutBuyeri = welfareOfOthers;
+				}
+			}
 		}
 		
 	}
@@ -202,7 +249,7 @@ public class CalculateTradingPrice {
 		for(int i=0; i<buyers.length; i++) {
 			double totalContribution = (double) Arrays.stream(newWelfareAlloc[i]).sum();
 			if(totalContribution > 0) {
-				System.out.println("Buyer i: " + i);
+//				System.out.println("Buyer i: " + i);
 //				calculate seller's distribution: welfare w/o i - others
 				calculateWelfareOfOthers(i);
 				calculateWelfareWithoutBuyeri(i);
@@ -218,9 +265,26 @@ public class CalculateTradingPrice {
 			}
 		}
 	}
+	
+//	calculate trading price table base of distribution table
+	public static void getTradingPriceTable() {
+		for(int row=0; row<buyers.length; row++) {
+			for(int col=0; col<sellers.length; col++) {
+				double tradingPrice = distribution[row][col] + newUnitAlloc[row][col] * sellers[col][1];
+				tradingPriceTable[row][col] = tradingPrice;
+				totalOfTradingPrice += tradingPrice;
+			}
+		}
+		printTwoDimsArray(tradingPriceTable);
+		buyerBase = ProcessData.cloneArray(tradingPriceTable);
+		System.out.println("Total of trading price: " + totalOfTradingPrice);
+	}
 
 //	get trading price of buyers and sellers
 	public static void getTradingPrice() {
+//		call getTradingPriceTable function
+		getTradingPriceTable();
+		
 		buyersTradingPrice = new double[buyers.length];
 		sellersTradingPrice = new double[sellers.length];
 //		buyer's trading price is the last element of the row related to buyer id
@@ -264,6 +328,15 @@ public class CalculateTradingPrice {
 			System.out.println();
 		}
 	}
+	
+	public static double[][] getBuyerBase(){
+		return buyerBase;
+	}
+	
+	public static double[][] getSellerBase(){
+		return sellerBase;
+	}
+	
 //	round number
 	public static double roundDouble(double value, int places) {
 	    double scale = Math.pow(10, places);

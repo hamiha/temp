@@ -7,6 +7,8 @@ public class Acution {
 	
 	private static double optWelfare = 0;
 	private static int[] alloc;
+	private static double[][] buyerBase;
+	private static double[][] sellerBase;
 	
 	public static double[][] runSimulate(int[][] sellers, int[][] buyers, boolean isGen, boolean isBuyerBase) throws LpSolveException {
 //    	create linear object with its objective function
@@ -55,6 +57,8 @@ public class Acution {
 	    	calculation.BuyerBase();
 	    else
 	    	calculation.SellerBase();
+	    
+	    buyerBase =  calculation.getBuyerBase();
 	    
 	    double stopTime = System.nanoTime();
 	    double timeElapsed = (stopTime - startTime) / 1000000000;
@@ -147,18 +151,40 @@ public class Acution {
 //		input format: {units,  unit price}
 //		auto generate data (number of sellers, number of buyers)
 		
-		GenerateData data = new GenerateData(6, 8);
+		GenerateData data = new GenerateData(12, 15);
 		System.out.println("-----BUYER BASE------");
 		runSimulate(data.sellers, data.buyers, true, true);
 		
 		System.out.println("-----SELLER BASE------");
 		CalculateTradingPrice sellerCal = new CalculateTradingPrice(data.sellers, data.buyers, alloc, optWelfare, true);
-		sellerCal.SellerBase();
+		sellerCal.SellerBase();	
+		sellerBase = sellerCal.getSellerBase();
+		
+		getDiff(data.sellers, data.buyers);
 		
 //		run simulation and get mean welfare and mean running time of genetic and brute force
 //		runToGetTimeAndWelfare(numberOfSimulation, maxNumberOfBuyers, diffNumberOfBuyerAndSellers, buyerStartFrom);
 //		runToGetTimeAndWelfare(3, 8, 2, 6);
 				
+	}
+	
+	private static void getDiff(int[][] sellers, int[][] buyers){
+		double[][] result = new double[buyers.length][sellers.length];
+		
+		System.out.println("-------Analyze----------");
+		for(int i=0; i<buyers.length; i++) {
+			for(int j=0; j<sellers.length; j++) {
+				result[i][j] = Math.abs(buyerBase[i][j] - sellerBase[i][j]);
+				if(result[i][j] > 10.0) {
+					System.out.println("Buyer " + i + ": [" + buyers[i][0] + ", " + buyers[i][1] + "] and seller " + j + ": [" + sellers[j][0] + ", " + sellers[j][1] + "]");
+					System.out.println("Diff: " + result[i][j]);
+				} 
+			}
+		}
+		
+		System.out.println("-------Diff-----------------");
+		CalculateTradingPrice.printTwoDimsArray(result);
+		System.out.println("----------------------------");
 	}
 }
 

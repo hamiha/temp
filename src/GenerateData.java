@@ -97,10 +97,10 @@ public class GenerateData {
 			}
 		}
 		
-		System.out.println("buyers: ");
+		System.out.println("buyers: " + getMeanBiddingPrice(buyers));
 		print2DArrays(buyers);
 //
-		System.out.println("\nsellers: ");
+		System.out.println("\nsellers: " + getMeanBiddingPrice(sellers));
 		print2DArrays(sellers);
 		
 		System.out.println();
@@ -110,5 +110,13 @@ public class GenerateData {
         for (int[] row : array) 
         	System.out.print(Arrays.toString(row)); 
     } 
+	
+	private static double getMeanBiddingPrice(int array[][]) {
+		double mean = 0;
+		for(int[] row : array) {
+			mean += (double) row[1];
+		}
+		return (mean / array.length);
+	}
 
 }
